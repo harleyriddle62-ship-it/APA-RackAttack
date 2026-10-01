@@ -1,4 +1,4 @@
-import { pool, initSchema } from './db.js';
+import { pool } from './db.js';
 
 const TEAMS = [
   { name: 'Break Room Bandits', players: ['Danny R.', 'Marcus T.', 'Priya S.', 'Louie M.'] },
@@ -9,14 +9,13 @@ const TEAMS = [
   { name: 'Snooker Sharks', players: ['Devin A.', 'Rosa G.', 'Carl M.', 'Yuki H.'] },
 ];
 
-async function seed() {
-  await initSchema();
-
+/**
+ * Insert demo data the first time the database is empty. Called on every API
+ * boot and cheap to run — it is a no-op once any league exists.
+ */
+export async function seedIfEmpty() {
   const { rows: existing } = await pool.query('SELECT count(*)::int AS n FROM leagues');
-  if (existing[0].n > 0) {
-    console.log('[seed] data already present, skipping');
-    return;
-  }
+  if (existing[0].n > 0) return;
 
   const { rows: leagueRows } = await pool.query(
     'INSERT INTO leagues (name, season) VALUES ($1, $2) RETURNING id',
@@ -51,11 +50,8 @@ async function seed() {
     const [home, away] = pairings[p];
     if (played < 9) {
       const winner = p % 2 === 0 ? home : away;
-      const loser = p % 2 === 0 ? away : home;
-      const winScore = 5;
-      const loseScore = 1 + (p % 4); // 1..4
-      const homeScore = winner === home ? winScore : loseScore;
-      const awayScore = winner === away ? winScore : loseScore;
+      const homeScore = winner === home ? 5 : 1 + (p % 4);
+      const awayScore = winner === away ? 5 : 1 + (p % 4);
       const when = new Date(now - (9 - played) * 36 * 3600 * 1000);
       await pool.query(
         `INSERT INTO matches (league_id, home_team_id, away_team_id, scheduled_at, home_score, away_score, status)
@@ -73,12 +69,5 @@ async function seed() {
     }
   }
 
-  console.log(`[seed] created league with ${teamIds.length} teams and ${pairings.length} matches`);
+  console.log(`[seed] created demo league with ${teamIds.length} teams and ${pairings.length} matches`);
 }
-
-seed()
-  .then(() => pool.end())
-  .catch((err) => {
-    console.error('[seed] failed', err);
-    pool.end().finally(() => process.exit(1));
-  });

@@ -21,8 +21,9 @@ docker compose -f docker-compose.base44.yml up -d --build
 - Dependencies install on container startup (`npm install`); `node_modules` live
   in the `api_node_modules` / `web_node_modules` volumes so they survive restarts
   and are never committed.
-- `api` creates the schema on boot (`initSchema`); a one-shot `seed` service runs
-  after the API is healthy and inserts demo data only when no leagues exist.
+- `api` creates the schema on boot (`initSchema`) and seeds demo data
+  (`seedIfEmpty`) only when no leagues exist, so there is no one-shot container
+  left in an `exited` state.
 - Backend reload: `node --watch` restarts the API on file changes.
 - Frontend reload: Vite HMR (watching uses polling — bind mounts don't emit
   inotify events).

@@ -42,19 +42,6 @@ services:
       start_period: 60s
     restart: on-failure
 
-  seed:
-    image: node:22
-    working_dir: /app
-    volumes:
-      - ./api:/app
-      - api_node_modules:/app/node_modules
-    environment:
-      - DATABASE_URL=postgres://rackattack:rackattack_dev_pw@db:5432/rackattack
-    command: ['sh', '-ec', 'node src/seed.js']
-    depends_on:
-      api:
-        condition: service_healthy
-
   web:
     image: node:22
     working_dir: /app
