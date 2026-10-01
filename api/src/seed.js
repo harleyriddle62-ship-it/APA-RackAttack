@@ -71,3 +71,46 @@ export async function seedIfEmpty() {
 
   console.log(`[seed] created demo league with ${teamIds.length} teams and ${pairings.length} matches`);
 }
+
+/**
+ * Give the seeded completed matches some per-player results so the team detail
+ * page has something to show. Runs once — skipped as soon as any result exists.
+ */
+export async function backfillPlayerResultsIfEmpty() {
+  const { rows: existing } = await pool.query('SELECT count(*)::int AS n FROM player_results');
+  if (existing[0].n > 0) return;
+
+  const { rows: matches } = await pool.query(
+    `SELECT * FROM matches
+      WHERE status = 'completed' AND home_score IS NOT NULL AND away_score IS NOT NULL
+      ORDER BY id`
+  );
+  if (!matches.length) return;
+
+  for (const m of matches) {
+    const homeWon = m.home_score > m.away_score;
+
+    for (const teamId of [m.home_team_id, m.away_team_id]) {
+      const { rows: players } = await pool.query(
+        'SELECT id FROM players WHERE team_id = $1 ORDER BY id',
+        [teamId]
+      );
+      if (!players.length) continue;
+
+      const teamWon = teamId === m.home_team_id ? homeWon : !homeWon;
+      const oddIndex = m.id % players.length;
+
+      for (let i = 0; i < players.length; i++) {
+        const won = teamWon ? i !== oddIndex : i === oddIndex;
+        await pool.query(
+          `INSERT INTO player_results (match_id, player_id, won)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (match_id, player_id) DO NOTHING`,
+          [m.id, players[i].id, won]
+        );
+      }
+    }
+  }
+
+  console.log(`[seed] backfilled player results for ${matches.length} completed matches`);
+}

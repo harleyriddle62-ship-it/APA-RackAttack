@@ -1,6 +1,6 @@
 import express from 'express';
 import { pool, initSchema } from './db.js';
-import { seedIfEmpty } from './seed.js';
+import { backfillPlayerResultsIfEmpty, seedIfEmpty } from './seed.js';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -115,7 +115,25 @@ app.get(
       )
     ).rows;
 
-    res.json({ ...league, teams, players, matches, standings: computeStandings(teams, matches) });
+    const playerResults = (
+      await pool.query(
+        `SELECT pr.* FROM player_results pr
+           JOIN matches m ON m.id = pr.match_id
+          WHERE m.league_id = $1`,
+        [id]
+      )
+    ).rows;
+
+    res.json({
+      ...league,
+      teams,
+      players,
+      matches: matches.map((m) => ({
+        ...m,
+        player_results: playerResults.filter((r) => r.match_id === m.id),
+      })),
+      standings: computeStandings(teams, matches),
+    });
   })
 );
 
@@ -231,9 +249,117 @@ app.delete(
   })
 );
 
+// --- Team detail (roster stats + match history) ---
+app.get(
+  '/api/teams/:id',
+  wrap(async (req, res) => {
+    const { id } = req.params;
+    const team = (await pool.query('SELECT * FROM teams WHERE id = $1', [id])).rows[0];
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+
+    const league = (
+      await pool.query('SELECT * FROM leagues WHERE id = $1', [team.league_id])
+    ).rows[0];
+
+    const players = (
+      await pool.query(
+        `SELECT p.id, p.name,
+                count(pr.id)::int AS played,
+                coalesce(sum(CASE WHEN pr.won THEN 1 ELSE 0 END), 0)::int AS wins
+           FROM players p
+           LEFT JOIN player_results pr ON pr.player_id = p.id
+          WHERE p.team_id = $1
+          GROUP BY p.id, p.name
+          ORDER BY p.name`,
+        [id]
+      )
+    ).rows.map((p) => ({
+      ...p,
+      losses: p.played - p.wins,
+      win_pct: p.played ? Math.round((p.wins / p.played) * 100) : 0,
+    }));
+
+    const matches = (
+      await pool.query(
+        `SELECT m.*, opp.id AS opponent_id, opp.name AS opponent_name
+           FROM matches m
+           JOIN teams opp
+             ON opp.id = CASE WHEN m.home_team_id = $1 THEN m.away_team_id ELSE m.home_team_id END
+          WHERE m.home_team_id = $1 OR m.away_team_id = $1
+          ORDER BY m.scheduled_at NULLS LAST, m.id`,
+        [id]
+      )
+    ).rows.map((m) => {
+      const isHome = m.home_team_id === Number(id);
+      const teamScore = isHome ? m.home_score : m.away_score;
+      const opponentScore = isHome ? m.away_score : m.home_score;
+      let result = null;
+      if (m.status === 'completed' && teamScore != null && opponentScore != null) {
+        result = teamScore > opponentScore ? 'W' : teamScore < opponentScore ? 'L' : 'D';
+      }
+      return { ...m, is_home: isHome, team_score: teamScore, opponent_score: opponentScore, result };
+    });
+
+    const leagueTeams = (
+      await pool.query('SELECT * FROM teams WHERE league_id = $1', [team.league_id])
+    ).rows;
+    const leagueMatches = (
+      await pool.query('SELECT * FROM matches WHERE league_id = $1', [team.league_id])
+    ).rows;
+    const standings = computeStandings(leagueTeams, leagueMatches);
+    const index = standings.findIndex((r) => r.team_id === Number(id));
+
+    res.json({
+      team,
+      league,
+      players,
+      matches,
+      rank: index >= 0 ? index + 1 : null,
+      record:
+        index >= 0
+          ? standings[index]
+          : { played: 0, wins: 0, losses: 0, points_for: 0, points_against: 0 },
+    });
+  })
+);
+
+// --- Per-match player results ---
+app.put(
+  '/api/matches/:id/player-results',
+  wrap(async (req, res) => {
+    const results = req.body?.results;
+    if (!Array.isArray(results)) {
+      return res.status(400).json({ error: 'results must be an array' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const r of results) {
+        if (!r?.player_id) continue;
+        await client.query(
+          `INSERT INTO player_results (match_id, player_id, won)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (match_id, player_id) DO UPDATE SET won = EXCLUDED.won`,
+          [req.params.id, r.player_id, !!r.won]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    res.json({ ok: true });
+  })
+);
+
 async function start() {
   await initSchema();
   await seedIfEmpty();
+  await backfillPlayerResultsIfEmpty();
   app.listen(PORT, '0.0.0.0', () => console.log(`[api] listening on port ${PORT}`));
 }
 

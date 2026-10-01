@@ -3,8 +3,22 @@ import { api } from './api.js';
 import Standings from './components/Standings.jsx';
 import Teams from './components/Teams.jsx';
 import Schedule from './components/Schedule.jsx';
+import TeamDetail from './components/TeamDetail.jsx';
 
 const TABS = ['Standings', 'Teams', 'Schedule'];
+
+/** Tiny hash router: the only non-list route is `#/team/:id`. */
+function useHashRoute() {
+  const [hash, setHash] = useState(() => window.location.hash);
+
+  useEffect(() => {
+    const onChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+
+  return hash;
+}
 
 export default function App() {
   const [leagues, setLeagues] = useState([]);
@@ -14,6 +28,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showNewLeague, setShowNewLeague] = useState(false);
+
+  const route = useHashRoute();
+  const teamRoute = route.match(/^#\/team\/(\d+)$/);
 
   const loadLeagues = useCallback(async () => {
     const data = await api.leagues();
@@ -99,7 +116,9 @@ export default function App() {
 
       {error && <div className="alert">⚠️ {error}</div>}
 
-      {loading ? (
+      {teamRoute ? (
+        <TeamDetail teamId={Number(teamRoute[1])} />
+      ) : loading ? (
         <div className="empty">Loading leagues…</div>
       ) : !league ? (
         <div className="empty">

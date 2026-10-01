@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
+import PlayerResults from './PlayerResults.jsx';
 
 const formatWhen = (value) =>
   value
@@ -73,7 +74,13 @@ export default function Schedule({ league, refresh }) {
       ) : (
         <ul className="match-list">
           {league.matches.map((m) => (
-            <MatchRow key={m.id} match={m} teamName={teamName} refresh={refresh} />
+            <MatchRow
+              key={m.id}
+              match={m}
+              players={league.players}
+              teamName={teamName}
+              refresh={refresh}
+            />
           ))}
         </ul>
       )}
@@ -81,7 +88,7 @@ export default function Schedule({ league, refresh }) {
   );
 }
 
-function MatchRow({ match, teamName, refresh }) {
+function MatchRow({ match, players, teamName, refresh }) {
   const [homeScore, setHomeScore] = useState(match.home_score ?? '');
   const [awayScore, setAwayScore] = useState(match.away_score ?? '');
   const [busy, setBusy] = useState(false);
@@ -108,40 +115,56 @@ function MatchRow({ match, teamName, refresh }) {
   };
 
   return (
-    <li className={completed ? 'match completed' : 'match'}>
-      <div className="match-info">
-        <span className="match-teams">
-          {teamName(match.home_team_id)} <em>vs</em> {teamName(match.away_team_id)}
-        </span>
-        <span className="muted small-text">{formatWhen(match.scheduled_at)}</span>
+    <li className="match-item">
+      <div className={completed ? 'match completed' : 'match'}>
+        <div className="match-info">
+          <span className="match-teams">
+            {teamName(match.home_team_id)} <em>vs</em> {teamName(match.away_team_id)}
+          </span>
+          <span className="muted small-text">{formatWhen(match.scheduled_at)}</span>
+        </div>
+
+        <div className="match-actions">
+          <input
+            className="score"
+            type="number"
+            min="0"
+            value={homeScore}
+            onChange={(e) => setHomeScore(e.target.value)}
+            placeholder="–"
+          />
+          <span className="dash">–</span>
+          <input
+            className="score"
+            type="number"
+            min="0"
+            value={awayScore}
+            onChange={(e) => setAwayScore(e.target.value)}
+            placeholder="–"
+          />
+          <button
+            className="btn"
+            onClick={save}
+            disabled={busy || homeScore === '' || awayScore === ''}
+          >
+            Save
+          </button>
+          {completed && <span className="badge">Final</span>}
+          <button className="btn btn-ghost danger" onClick={remove} title="Delete match">
+            ✕
+          </button>
+        </div>
       </div>
 
-      <div className="match-actions">
-        <input
-          className="score"
-          type="number"
-          min="0"
-          value={homeScore}
-          onChange={(e) => setHomeScore(e.target.value)}
-          placeholder="–"
+      {completed && (
+        <PlayerResults
+          match={match}
+          players={players}
+          homeName={teamName(match.home_team_id)}
+          awayName={teamName(match.away_team_id)}
+          onSaved={refresh}
         />
-        <span className="dash">–</span>
-        <input
-          className="score"
-          type="number"
-          min="0"
-          value={awayScore}
-          onChange={(e) => setAwayScore(e.target.value)}
-          placeholder="–"
-        />
-        <button className="btn" onClick={save} disabled={busy || homeScore === '' || awayScore === ''}>
-          Save
-        </button>
-        {completed && <span className="badge">Final</span>}
-        <button className="btn btn-ghost danger" onClick={remove} title="Delete match">
-          ✕
-        </button>
-      </div>
+      )}
     </li>
   );
 }

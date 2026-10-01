@@ -530,6 +530,156 @@ select.league-select {
   flex: none;
 }
 
+/* --- Team detail page --- */
+.back-link {
+  align-self: flex-start;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.back-link:hover {
+  color: var(--green-soft);
+}
+
+.team-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.25);
+}
+
+.team-link:hover {
+  color: var(--green-soft);
+  border-bottom-color: var(--green-soft);
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.stat-value {
+  font-size: 21px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.badge-win {
+  background: var(--green-soft);
+}
+
+.badge-loss {
+  background: var(--danger);
+}
+
+.badge-pending {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.score-line {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Per-match player results --- */
+.match-item {
+  list-style: none;
+}
+
+.player-results {
+  margin-top: 8px;
+}
+
+.small-btn {
+  font-size: 12.5px;
+  padding: 5px 10px;
+}
+
+.player-results-body {
+  margin-top: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.results-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.roster-block h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.roster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.roster-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.toggle-group {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.toggle {
+  width: 28px;
+  padding: 3px 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.toggle.win.active {
+  background: var(--green-soft);
+  border-color: var(--green-soft);
+  color: #04160c;
+}
+
+.toggle.loss.active {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #2a0b0b;
+}
+
 @media (max-width: 640px) {
   .hide-sm {
     display: none;

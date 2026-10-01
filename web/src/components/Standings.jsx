@@ -33,7 +33,11 @@ export default function Standings({ league }) {
                 return (
                   <tr key={r.team_id}>
                     <td className="rank">{i + 1}</td>
-                    <td className="team-name">{r.name}</td>
+                    <td className="team-name">
+                      <a className="team-link" href={`#/team/${r.team_id}`}>
+                        {r.name}
+                      </a>
+                    </td>
                     <td>{r.played}</td>
                     <td className="win">{r.wins}</td>
                     <td className="loss">{r.losses}</td>

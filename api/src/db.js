@@ -42,5 +42,13 @@ export async function initSchema() {
       status       TEXT NOT NULL DEFAULT 'scheduled',
       created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    CREATE TABLE IF NOT EXISTS player_results (
+      id        SERIAL PRIMARY KEY,
+      match_id  INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      won       BOOLEAN NOT NULL DEFAULT false,
+      UNIQUE (match_id, player_id)
+    );
   `);
 }

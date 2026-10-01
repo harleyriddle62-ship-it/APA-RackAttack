@@ -16,6 +16,8 @@ export const api = {
   createLeague: (data) =>
     request('/api/leagues', { method: 'POST', body: JSON.stringify(data) }),
 
+  team: (id) => request(`/api/teams/${id}`),
+
   createTeam: (leagueId, data) =>
     request(`/api/leagues/${leagueId}/teams`, { method: 'POST', body: JSON.stringify(data) }),
   deleteTeam: (id) => request(`/api/teams/${id}`, { method: 'DELETE' }),
@@ -29,4 +31,9 @@ export const api = {
   updateMatch: (id, data) =>
     request(`/api/matches/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteMatch: (id) => request(`/api/matches/${id}`, { method: 'DELETE' }),
+  savePlayerResults: (matchId, data) =>
+    request(`/api/matches/${matchId}/player-results`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };

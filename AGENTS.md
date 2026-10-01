@@ -24,6 +24,9 @@ docker compose -f docker-compose.base44.yml up -d --build
 - `api` creates the schema on boot (`initSchema`) and seeds demo data
   (`seedIfEmpty`) only when no leagues exist, so there is no one-shot container
   left in an `exited` state.
+- `backfillPlayerResultsIfEmpty` gives the seeded completed matches per-player
+  results once, so the team detail page has something to show. Both are no-ops
+  once data exists.
 - Backend reload: `node --watch` restarts the API on file changes.
 - Frontend reload: Vite HMR (watching uses polling — bind mounts don't emit
   inotify events).
@@ -43,3 +46,8 @@ docker compose -f docker-compose.base44.yml ps
   `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS`.
 - Local DB credentials are dev-only and set inline in compose (not secrets).
 - No authentication yet — the app is a single shared workspace.
+- Per-player results live in `player_results (match_id, player_id, won)`; the API
+  derives each player's played/wins/losses/win%. They are recorded from the
+  "Player results" panel on a completed match in the Schedule tab.
+- Routing is a tiny hash router in `web/src/App.jsx`; only `#/team/:id` (team
+  detail) sits outside the league list, so no router dependency is needed.
