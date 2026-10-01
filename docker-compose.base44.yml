@@ -1,0 +1,85 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rackattack
+      POSTGRES_PASSWORD: rackattack_dev_pw
+      POSTGRES_DB: rackattack
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U rackattack -d rackattack']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: on-failure
+
+  api:
+    image: node:22
+    working_dir: /app
+    volumes:
+      - ./api:/app
+      - api_node_modules:/app/node_modules
+    environment:
+      - DATABASE_URL=postgres://rackattack:rackattack_dev_pw@db:5432/rackattack
+      - PORT=8000
+      - NODE_ENV=development
+    command: ['sh', '-ec', 'npm install --no-audit --no-fund && exec npm run dev']
+    ports:
+      - '8000:8000'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(\"http://localhost:8000/api/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+    restart: on-failure
+
+  seed:
+    image: node:22
+    working_dir: /app
+    volumes:
+      - ./api:/app
+      - api_node_modules:/app/node_modules
+    environment:
+      - DATABASE_URL=postgres://rackattack:rackattack_dev_pw@db:5432/rackattack
+    command: ['sh', '-ec', 'node src/seed.js']
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    image: node:22
+    working_dir: /app
+    volumes:
+      - ./web:/app
+      - web_node_modules:/app/node_modules
+    environment:
+      # Vite appends this to server.allowedHosts (the platform sets the value).
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+    command: ['sh', '-ec', 'npm install --no-audit --no-fund && exec npm run dev']
+    ports:
+      - '3000:3000'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(\"http://localhost:3000/\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    restart: on-failure
+
+volumes:
+  db_data:
+  api_node_modules:
+  web_node_modules:
